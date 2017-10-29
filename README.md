@@ -1,7 +1,8 @@
 # workshop-projects
 Keeping track of the workshops ideas.
 
-## Upcoming
+## Options
+### Databases
 
 Compare a few database solutions:
 
@@ -11,3 +12,7 @@ Compare a few database solutions:
 * Couchbase
 * Cassandra
 * DynamoDB
+
+### Kubernetes
+
+http://kubernetesbyexample.com/
