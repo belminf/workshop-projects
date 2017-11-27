@@ -15,5 +15,5 @@ Compare a few database solutions:
 
 ### Kubernetes
 
-http://kubernetesbyexample.com/
-https://github.com/aws-samples/aws-workshop-for-kubernetes
+* http://kubernetesbyexample.com/
+* https://github.com/aws-samples/aws-workshop-for-kubernetes
