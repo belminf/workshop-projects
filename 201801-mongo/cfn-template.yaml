@@ -1,0 +1,120 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+
+  VPCCIDR: 
+    Description: CIDR for the VPC
+    Type: String
+    Default: 172.16.0.0/16
+
+  PublicCIDR:
+    Description: CIDR for public subnet
+    Type: String
+    Default: 172.16.2.0/24
+
+  KeyName:
+    Description: EC2 key pair
+    Type: AWS::EC2::KeyPair::KeyName
+
+  AMIID:
+    Description: AMI ID
+    Type: AWS::EC2::Image::Id
+
+  InstanceType:
+    Description: EC2 instance type
+    Type: String
+    Default: t2.medium
+
+Resources:
+
+  VPC: 
+    Type: AWS::EC2::VPC
+    Properties:
+       CidrBlock: !Ref VPCCIDR
+       Tags: 
+         - Key: Name 
+           Value: !Sub vpc-${AWS::StackName}
+         - Key: project 
+           Value: !Ref AWS::StackName
+
+  IGW:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags: 
+         - Key: Name 
+           Value: !Sub igw-${AWS::StackName}
+         - Key: project 
+           Value: !Ref AWS::StackName
+
+  IGWAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref IGW
+
+  PublicSubnet: 
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PublicCIDR
+      AvailabilityZone: !Select [ 0, !GetAZs ]
+      MapPublicIpOnLaunch: false
+      Tags: 
+         - Key: Name 
+           Value: !Sub sn-${AWS::StackName}-public
+         - Key: project 
+           Value: !Ref AWS::StackName
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties: 
+      VpcId: !Ref VPC
+      Tags: 
+         - Key: Name 
+           Value: !Sub rt-${AWS::StackName}-public
+         - Key: project 
+           Value: !Ref AWS::StackName
+
+  PublicDefaultRoute: 
+    Type: AWS::EC2::Route
+    DependsOn: IGWAttachment
+    Properties: 
+      RouteTableId: !Ref PublicRouteTable
+      GatewayId: !Ref IGW
+      DestinationCidrBlock: 0.0.0.0/0
+
+  PublicRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet
+
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub Allow SSH for ${AWS::StackName}
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+        ImageId: !Ref AMIID
+        KeyName: !Ref KeyName
+        InstanceType: !Ref InstanceType
+        SecurityGroups:
+          - !Ref SecurityGroup
+        BlockDeviceMappings:
+          - DeviceName: /dev/sda1
+            Ebs:
+              VolumeSize: 50
+
+Outputs: 
+
+    VPC: 
+        Description: VPC for this project
+        Value: !Ref VPC
