@@ -59,7 +59,7 @@ Resources:
       VpcId: !Ref VPC
       CidrBlock: !Ref PublicCIDR
       AvailabilityZone: !Select [ 0, !GetAZs ]
-      MapPublicIpOnLaunch: false
+      MapPublicIpOnLaunch: true
       Tags: 
          - Key: Name 
            Value: !Sub sn-${AWS::StackName}-public
@@ -103,18 +103,28 @@ Resources:
   EC2Instance:
     Type: AWS::EC2::Instance
     Properties:
-        ImageId: !Ref AMIID
-        KeyName: !Ref KeyName
-        InstanceType: !Ref InstanceType
-        SecurityGroups:
-          - !Ref SecurityGroup
-        BlockDeviceMappings:
-          - DeviceName: /dev/sda1
-            Ebs:
-              VolumeSize: 50
+      ImageId: !Ref AMIID
+      KeyName: !Ref KeyName
+      InstanceType: !Ref InstanceType
+      SecurityGroups:
+        - !Ref SecurityGroup
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: 50
+      Tags: 
+         - Key: Name 
+           Value: !Sub ec2-${AWS::StackName}
+         - Key: project 
+           Value: !Ref AWS::StackName
+
 
 Outputs: 
 
     VPC: 
-        Description: VPC for this project
-        Value: !Ref VPC
+      Description: VPC for this project
+      Value: !Ref VPC
+
+    EC2IP:
+      Description: IP address of EC2 instance
+      Value: !GetAtt EC2Instance.PublicIp  
