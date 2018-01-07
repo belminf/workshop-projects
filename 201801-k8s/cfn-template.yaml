@@ -1,0 +1,144 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+
+  ProjectName:
+    Description: Used for tagging and resource names, no spaces or non-alphas
+    Type: String
+
+  VPCCIDR: 
+    Description: CIDR for the VPC
+    Type: String
+    Default: 172.16.0.0/16
+
+  PrivateCIDR:
+    Description: CIDR for private subnet
+    Type: String
+    Default: 172.16.1.0/24
+
+  PublicCIDR:
+    Description: CIDR for public subnet
+    Type: String
+    Default: 172.16.2.0/24
+
+
+Resources:
+
+  VPC: 
+    Type: AWS::EC2::VPC
+    Properties:
+       CidrBlock: !Ref VPCCIDR
+       Tags: 
+         - Key: Name 
+           Value: !Sub vpc-${ProjectName}
+         - Key: project 
+           Value: !Ref ProjectName
+
+  IGW:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags: 
+         - Key: Name 
+           Value: !Sub igw-${ProjectName}
+         - Key: project 
+           Value: !Ref ProjectName
+
+  IGWAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref IGW
+
+  PublicSubnet: 
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PublicCIDR
+      AvailabilityZone: !Select [ 0, !GetAZs ]
+      MapPublicIpOnLaunch: false
+      Tags: 
+         - Key: Name 
+           Value: !Sub sn-${ProjectName}-public
+         - Key: project 
+           Value: !Ref ProjectName
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties: 
+      VpcId: !Ref VPC
+      Tags: 
+         - Key: Name 
+           Value: !Sub rt-${ProjectName}-public
+         - Key: project 
+           Value: !Ref ProjectName
+
+  PublicDefaultRoute: 
+    Type: AWS::EC2::Route
+    DependsOn: IGWAttachment
+    Properties: 
+      RouteTableId: !Ref PublicRouteTable
+      GatewayId: !Ref IGW
+      DestinationCidrBlock: 0.0.0.0/0
+
+  PublicRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet
+
+
+  PrivateSubnet: 
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PrivateCIDR
+      AvailabilityZone: !Select [ 0, !GetAZs ]
+      MapPublicIpOnLaunch: false
+      Tags: 
+         - Key: Name 
+           Value: !Sub sn-${ProjectName}-private
+         - Key: project 
+           Value: !Ref ProjectName
+
+  NATEIP:
+    Type: AWS::EC2::EIP
+    Properties: 
+      Domain: vpc
+
+  NATGateway: 
+    Type: AWS::EC2::NatGateway
+    DependsOn: IGWAttachment
+    Properties: 
+      AllocationId: !GetAtt NATEIP.AllocationId
+      SubnetId: !Ref PublicSubnet
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties: 
+      VpcId: !Ref VPC
+      Tags: 
+         - Key: Name 
+           Value: !Sub rt-${ProjectName}-private
+         - Key: project 
+           Value: !Ref ProjectName
+
+  PrivateDefaultRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      NatGatewayId: !Ref NATGateway
+      DestinationCidrBlock: 0.0.0.0/0
+
+  PrivateRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PrivateSubnet
+
+
+Outputs: 
+
+    VPC: 
+        Description: VPC for this project
+        Value: !Ref VPC
