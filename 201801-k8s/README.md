@@ -1,4 +1,6 @@
 # Setup
+Need `awscli` installed:
+
     pip install -r requirements.txt
 
 # Example run
